@@ -3,7 +3,7 @@ export enum AgentStatus { Online = 0, Busy = 1, Offline = 2 }
 export type AgentStatusName = 'Online' | 'Busy' | 'Offline';
 
 export interface ChatMessage { messageId: string; senderName: string; senderType: SenderMessageType; message: string; dateTimeCreated: string; }
-export interface Enquiry { enquiryId: string; messages: ChatMessage[]; }
+export interface Enquiry { enquiryId: string; isClosed: boolean; messages: ChatMessage[]; }
 export interface Agent { id: string; agentName: string; status: AgentStatus; activeEnquiriesCount: number; maxCapacity: number; }
 
 export interface CreateEnquiryRequest { clientId: string; languageCode: string; messageId: string; message: string; requiredSkills: string[]; }
