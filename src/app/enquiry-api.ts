@@ -1,5 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
+import { AppConfigService } from './app-config.service';
 import { CloseEnquiryRequest, CloseEnquiryResponse, CreateEnquiryRequest, CreateEnquiryResponse, GetAgentEnquiriesRequest, GetAgentEnquiriesResponse, GetAgentsResponse, GetEnquiryRequest, GetEnquiryResponse, SendEnquiryMessageRequest, SendEnquiryMessageResponse, SetAgentStatusRequest, SetAgentStatusResponse } from './enquiry.models';
 
 export * from './enquiry.models';
@@ -7,7 +8,9 @@ export * from './enquiry.models';
 @Injectable({ providedIn: 'root' })
 export class EnquiryApi {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = 'https://localhost:8081';
+  private readonly appConfig = inject(AppConfigService);
+
+  private get baseUrl() { return this.appConfig.apiUrl; }
 
   createEnquiry(request: CreateEnquiryRequest) { return this.http.post<CreateEnquiryResponse>(`${this.baseUrl}/enquiries`, request); }
   getEnquiry(request: GetEnquiryRequest) { return this.http.get<GetEnquiryResponse>(`${this.baseUrl}/enquiries/${request.enquiryId}`, { params: request.from === undefined ? undefined : new HttpParams().set('from', request.from) }); }

@@ -12,6 +12,18 @@ ng serve
 
 Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
 
+## API configuration
+
+The API URL is loaded at startup from `public/config.json`. Local development uses:
+
+```json
+{
+	"apiUrl": "https://localhost:8081"
+}
+```
+
+Before deploying, replace `public/config.json` with the API URL for that environment. The file is copied to the deployed site as `/config.json`, so the same frontend build can be used with different API hosts without rebuilding it. Do not put secrets in this file; browser-delivered configuration is public.
+
 ## Code scaffolding
 
 Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
