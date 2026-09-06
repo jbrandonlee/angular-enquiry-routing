@@ -42,13 +42,16 @@ import { mergeMessages, unixTimestamp } from './chat-utils';
           </select></label
         ><label
           >Status<select
-            [value]="status()"
             (change)="changeStatus(+$any($event.target).value)"
             [disabled]="!activeAgentId()"
           >
-            <option [value]="0">Online</option>
-            <option [value]="1">Busy</option>
-            <option [value]="2">Offline</option>
+            @if (!activeAgentId()) {
+              <option value="" selected></option>
+            } @else {
+              <option [selected]="status() === 0" [value]="0">Online</option>
+              <option [selected]="status() === 1" [value]="1">Busy</option>
+              <option [selected]="status() === 2" [value]="2">Offline</option>
+            }
           </select></label
         >
       </div>
@@ -146,7 +149,7 @@ export class AgentChat {
   private readonly destroyRef = inject(DestroyRef);
   readonly agents = signal<Agent[]>([]);
   readonly activeAgentId = signal('');
-  readonly status = signal(AgentStatus.Online);
+  readonly status = signal<AgentStatus | ''>('');
   readonly enquiries = signal<Enquiry[]>([]);
   readonly pollingTimestamp = signal<number | undefined>(undefined);
   readonly activeEnquiryId = signal('');
@@ -182,7 +185,11 @@ export class AgentChat {
     this.pollingTimestamp.set(undefined);
     this.activeEnquiryId.set('');
     const agent = this.agents().find((a) => a.id === id);
-    if (agent) this.status.set(agent.status);
+    if (agent) {
+      this.status.set(agent.status);
+    } else {
+      this.status.set('');
+    }
     this.poll();
   }
   changeStatus(status: AgentStatus) {
