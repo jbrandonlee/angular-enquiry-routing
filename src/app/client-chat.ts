@@ -122,14 +122,14 @@ export class ClientChat {
   readonly error = signal('');
   readonly sending = signal(false);
   readonly isClosed = signal(false);
-  readonly enquiryId = signal(sessionStorage.getItem('enquiryId'));
+  readonly enquiryId = signal(localStorage.getItem('enquiryId'));
   constructor() {
     this.poll();
     const id = window.setInterval(() => this.poll(), 10_000);
     this.destroyRef.onDestroy(() => clearInterval(id));
   }
   onHomeClick() {
-    sessionStorage.removeItem('enquiryId');
+    localStorage.removeItem('enquiryId');
     this.enquiryId.set(null);
     this.selectedTopics.set([]);
     this.language.set('EN');
@@ -155,7 +155,7 @@ export class ClientChat {
     event.preventDefault();
     if (!this.canSend() || this.sending() || this.isClosed()) return;
     const text = this.draft().trim();
-    const messageId = crypto.randomUUID();
+    const messageId = this.generateUUIDv4();
     this.sending.set(true);
     this.error.set('');
     const id = this.enquiryId();
@@ -190,7 +190,7 @@ export class ClientChat {
         .subscribe({
           next: (response) => {
             this.enquiryId.set(response.enquiryId);
-            sessionStorage.setItem('enquiryId', response.enquiryId);
+            localStorage.setItem('enquiryId', response.enquiryId);
             this.messages.set(response.messages);
             this.pollingTimestamp.set(unixTimestamp(response.messages));
             this.draft.set('');
@@ -229,14 +229,21 @@ export class ClientChat {
     };
   }
   private getOrCreateClientId() {
-    const current = sessionStorage.getItem('clientId');
+    const current = localStorage.getItem('clientId');
     if (current) return current;
-    const clientId = crypto.randomUUID();
-    sessionStorage.setItem('clientId', clientId);
+    const clientId = this.generateUUIDv4();
+    localStorage.setItem('clientId', clientId);
     return clientId;
   }
   private fail(message: string) {
     this.error.set(message);
     this.sending.set(false);
+  }
+  private generateUUIDv4() {
+    const bytes = crypto.getRandomValues(new Uint8Array(16));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40; // Version 4
+    bytes[8] = (bytes[8] & 0x3f) | 0x80; // Variant
+    const hex = [...bytes].map(b => b.toString(16).padStart(2, '0')).join('');
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
   }
 }
