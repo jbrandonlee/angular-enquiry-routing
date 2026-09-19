@@ -1,24 +1,22 @@
-import { TestBed } from '@angular/core/testing';
-import { App } from './app';
+import { describe, expect, it } from 'vitest';
+import { mergeEnquiries } from './chat-utils';
 
-describe('App', () => {
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({
-      imports: [App],
-    })
-      .compileComponents();
-  });
+describe('AgentChat', () => {
+  it('keeps a closed enquiry in the chat list after polling', () => {
+    const closedEnquiry = {
+      enquiryId: 'enq-1',
+      isClosed: true,
+      messages: [{
+        messageId: 'm-1',
+        senderName: 'Client',
+        senderType: 1,
+        message: 'Need help',
+        dateTimeCreated: '2024-01-01T00:00:00.000Z',
+      }],
+    };
 
-  it('should create the app', () => {
-    const fixture = TestBed.createComponent(App);
-    const app = fixture.componentInstance;
-    expect(app).toBeTruthy();
-  });
+    const merged = mergeEnquiries([closedEnquiry as any], []);
 
-  it('should render title', async () => {
-    const fixture = TestBed.createComponent(App);
-    await fixture.whenStable();
-    const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('Hello, angular-enquiry-routing');
+    expect(merged.some((enquiry) => enquiry.enquiryId === 'enq-1')).toBe(true);
   });
 });

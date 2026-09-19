@@ -9,7 +9,7 @@ import {
   EnquiryApi,
   SenderMessageType,
 } from './enquiry-api';
-import { mergeMessages, unixTimestamp } from './chat-utils';
+import { mergeEnquiries, unixTimestamp } from './chat-utils';
 
 @Component({
   selector: 'app-agent-chat',
@@ -65,9 +65,9 @@ import { mergeMessages, unixTimestamp } from './chat-utils';
       <section class="workspace">
         <nav aria-label="Enquiry chats">
           <div class="nav-title">
-            <span>Active enquiries</span><b>{{ enquiries().length }}</b>
+            <span>Active enquiries</span><b>{{ openEnquiries().length }}</b>
           </div>
-          @for (enquiry of enquiries(); track enquiry.enquiryId) {
+          @for (enquiry of openEnquiries(); track enquiry.enquiryId) {
             <button
               [class.active]="activeEnquiryId() === enquiry.enquiryId"
               (click)="activeEnquiryId.set(enquiry.enquiryId)"
@@ -80,6 +80,36 @@ import { mergeMessages, unixTimestamp } from './chat-utils';
             </button>
           } @empty {
             <p class="no-chats">No active enquiries.</p>
+          }
+          @if (closedEnquiries().length) {
+            <button
+              type="button"
+              class="expand-toggle"
+              [attr.aria-expanded]="showClosedEnquiries()"
+              (click)="showClosedEnquiries.set(!showClosedEnquiries())"
+            >
+              <span class="expand-label">
+                <span class="expand-arrow">{{ showClosedEnquiries() ? '▾' : '▸' }}</span>
+                {{ showClosedEnquiries() ? 'Hide closed enquiries' : 'Show closed enquiries' }}
+              </span>
+              <span class="expand-count">{{ closedEnquiries().length }}</span>
+            </button>
+            @if (showClosedEnquiries()) {
+              @for (enquiry of closedEnquiries(); track enquiry.enquiryId) {
+                <button
+                  type="button"
+                  class="closed-chat"
+                  [class.active]="activeEnquiryId() === enquiry.enquiryId"
+                  (click)="activeEnquiryId.set(enquiry.enquiryId)"
+                >
+                  <span class="initial closed">{{ clientName(enquiry).slice(0, 1) }}</span
+                  ><span
+                    ><strong>{{ clientName(enquiry) }}</strong
+                    ><small>{{ enquiry.messages.at(-1)?.message || 'Closed enquiry' }}</small></span
+                  >
+                </button>
+              }
+            }
           }
         </nav>
         <section class="conversation">
@@ -155,6 +185,7 @@ export class AgentChat {
   readonly activeEnquiryId = signal('');
   readonly draft = signal('');
   readonly closed = signal<string[]>([]);
+  readonly showClosedEnquiries = signal(false);
   readonly error = signal('');
   constructor() {
     this.loadAgents();
@@ -175,6 +206,12 @@ export class AgentChat {
         },
         error: () => this.error.set('Agent profiles could not be loaded.'),
       });
+  }
+  openEnquiries() {
+    return this.enquiries().filter((enquiry) => !enquiry.isClosed);
+  }
+  closedEnquiries() {
+    return this.enquiries().filter((enquiry) => enquiry.isClosed);
   }
   activeEnquiry() {
     return this.enquiries().find((e) => e.enquiryId === this.activeEnquiryId());
@@ -210,12 +247,11 @@ export class AgentChat {
     if (!id) return;
     this.api.getAgentEnquiries({ agentId: id, from: this.pollingTimestamp() }).subscribe({
       next: (r) => {
-        this.enquiries.update((current) =>
-          r.enquiries.map((next) => {
-            const old = current.find((x) => x.enquiryId === next.enquiryId);
-            return old ? { ...next, messages: mergeMessages(old.messages, next.messages) } : next;
-          }),
-        );
+        this.enquiries.update((current) => mergeEnquiries(current, r.enquiries));
+
+        const closedIds = new Set(this.enquiries().filter((enquiry) => enquiry.isClosed).map((enquiry) => enquiry.enquiryId));
+        this.closed.set([...closedIds]);
+
         const timestamp = unixTimestamp(r.enquiries.flatMap((enquiry) => enquiry.messages));
         if (timestamp !== undefined) this.pollingTimestamp.set(timestamp);
         if (!this.activeEnquiryId() && r.enquiries[0])
@@ -263,7 +299,14 @@ export class AgentChat {
     this.api
       .closeEnquiry({ enquiryId, agentId })
       .subscribe({
-        next: () => this.closed.update((ids) => [...ids, enquiryId]),
+        next: () => {
+          this.closed.update((ids) => [...new Set([...ids, enquiryId])]);
+          this.enquiries.update((all) =>
+            all.map((enquiry) =>
+              enquiry.enquiryId === enquiryId ? { ...enquiry, isClosed: true } : enquiry,
+            ),
+          );
+        },
         error: () => this.error.set('Enquiry could not be closed.'),
       });
   }
